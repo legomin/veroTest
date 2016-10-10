@@ -3,6 +3,7 @@ package web;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.EntryDto;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import model.Entry;
@@ -28,9 +29,15 @@ public class HttpHandler  {
      */
     public void handleGetEntries(RoutingContext context) {
 
-        JsonObject jsonObject = context.getBodyAsJson();
+        String pagingState;
         try {
-            String pagingState = jsonObject.getString("pagingState");
+            JsonObject jsonObject = context.getBodyAsJson();
+            pagingState = jsonObject.getString("pagingState");
+        } catch (DecodeException e) {
+            pagingState = null;
+        }
+
+        try {
             String res = mapper.writeValueAsString(repository.getEntries(pagingState));
             context.response()
                     .putHeader("content-type", "application/json")
@@ -42,6 +49,7 @@ public class HttpHandler  {
                     .setStatusCode(404)
                     .end("");
             e.printStackTrace();
+
         }
     }
 
