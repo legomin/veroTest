@@ -19,17 +19,6 @@ public class PagingResult implements Serializable{
         this.pagingList = pagingList;
     }
 
-    public PagingResult() {
-    }
-
-    public void setPagingState(String pagingState) {
-        this.pagingState = pagingState;
-    }
-
-    public void setPagingList(List<EntryDto> pagingList) {
-        this.pagingList = pagingList;
-    }
-
     /**
      * @return paging state for next page
      */

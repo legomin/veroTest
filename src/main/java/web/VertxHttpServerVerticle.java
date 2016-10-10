@@ -26,7 +26,7 @@ public class VertxHttpServerVerticle extends AbstractVerticle {
         router.route().consumes("application/json");
         router.route().produces("application/json");
 
-        router.route("/latest/*").handler(SockJSHandler.create(vertx));
+        router.route("/latest/").handler(SockJSHandler.create(vertx));
 
         router.route().handler(BodyHandler.create());
 

@@ -3,11 +3,6 @@ package web;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.EntryDto;
-import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
-import io.vertx.core.http.HttpClientRequest;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import model.Entry;
@@ -27,12 +22,16 @@ public class HttpHandler  {
     private ObjectMapper mapper = new ObjectMapper();
 
     /**
+     * get paging list of entries
      *
      * @param context
      */
     public void handleGetEntries(RoutingContext context) {
+
+        JsonObject jsonObject = context.getBodyAsJson();
         try {
-            String res = mapper.writeValueAsString(repository.getEntries(null));
+            String pagingState = jsonObject.getString("pagingState");
+            String res = mapper.writeValueAsString(repository.getEntries(pagingState));
             context.response()
                     .putHeader("content-type", "application/json")
                     .setStatusCode(200)
@@ -41,12 +40,13 @@ public class HttpHandler  {
             context.response()
                     .putHeader("content-type", "application/json")
                     .setStatusCode(404)
-                    .end();
+                    .end("");
             e.printStackTrace();
         }
     }
 
     /**
+     * get entry by entry's id
      *
      * @param context
      */
@@ -77,6 +77,7 @@ public class HttpHandler  {
     }
 
     /**
+     * post new entry
      *
      * @param context
      */
@@ -97,23 +98,25 @@ public class HttpHandler  {
 
         UUID uuid = repository.postEntry(entry);
 
-        try {
-            context.vertx().eventBus().publish("/latest/", mapper.writeValueAsString(new EntryDto(
-                    entry.getBody(),
-                    entry.getTitle(),
-                    entry.getExpires(),
-                    entry.getCreationDate()
-            )));
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
+        if (!entry.getPrivateEntry()) {
+            try {
+                context.vertx().eventBus().publish("/latest/", mapper.writeValueAsString(new EntryDto(
+                        entry.getBody(),
+                        entry.getTitle(),
+                        entry.getExpires(),
+                        entry.getCreationDate()
+                )));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
         }
-
         context.response()
                 .setStatusCode(200)
                 .end(uuid.toString());
     }
 
     /**
+     * delete entry by entryid
      *
      * @param context
      */
@@ -136,6 +139,7 @@ public class HttpHandler  {
     }
 
     /**
+     * put entry
      *
      * @param context
      */
@@ -171,111 +175,6 @@ public class HttpHandler  {
                     .end(res+"");
 
         }
- }
-
-
-
-
-
-
-
-
-
-
-/*    public void handle(RoutingContext routingContext) {
-        System.out.println("incoming request!");
-        HttpServerRequest request = routingContext.request();
-
-        String uri = request.uri();
-        //if (uri.contains("/entries/")) {
-            MultiMap params = request.params();
-
-            if (request.method() == HttpMethod.GET) {
-                if (params.contains("secret")) {
-                    try {
-                        Entry entry = repository.getEntry(UUID.fromString(params.get("secret")));
-                        if (entry == null) {
-                            request.response().setStatusCode(404).end("404 not found by secret");
-                        }
-                        else {
-                            request.response().end(mapper.writeValueAsString(entry));
-                        }
-                    } catch (JsonProcessingException e) {
-                        e.printStackTrace();
-                    }
-                }
-                else {
-                    try {
-                        String res = mapper.writeValueAsString(repository.getEntries(null));
-                        request.response().end(res);
-                    } catch (JsonProcessingException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            else if (request.method() == HttpMethod.POST) {
-                if (params.get("body") == null) {
-                    request.response().setStatusCode(404).end("404 Bad request");
-                }
-                //TODO exired date, isPrivate
-                Entry entry = new Entry(params.get("body"),
-                        params.get("title"),
-                        null,
-                        null);
-                UUID uuid = repository.postEntry(entry);
-
-                request.response().end(uuid.toString());
-                try {
-                    routingContext.vertx().eventBus().publish("/latest/", mapper.writeValueAsString(new EntryDto(
-                            entry.getBody(),
-                            entry.getTitle(),
-                            entry.getExpires(),
-                            entry.getCreationDate()
-                    )));
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-
-                routingContext.response()
-                        .setStatusCode(200)
-                        .end();
-            }
-            else if (request.method() == HttpMethod.PUT) {
-                if (params.get("secret") == null) {
-                    request.response().setStatusCode(404).end("404 Bad request");
-                }
-                //TODO exired date, isPrivate
-                Entry entry = new Entry(params.get("body"),
-                        params.get("title"),
-                        null,
-                        null);
-                entry.setId(UUID.fromString(params.get("secret")));
-                int res = repository.putEntry(entry);
-                if (res == -1) {
-                    request.response().setStatusCode(404).end("404 not found by secret");
-                }
-                else {
-                    request.response().end("success");
-                }
-            }
-            else if (request.method() == HttpMethod.DELETE) {
-                if (params.get("secret") == null) {
-                    request.response().setStatusCode(404).end("404 Bad request");
-                }
-                int res = repository.deleteEntry(UUID.fromString(params.get("secret")));
-                if (res == -1) {
-                    request.response().setStatusCode(404).end("404 not found by secret");
-                }
-                else {
-                    request.response().end("success");
-                }
-            }
-        //}
-        //else {
-        //    request.response().setStatusCode(404).end("404 Bad request");
-        //}
-
     }
-*/
 
 }

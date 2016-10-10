@@ -3,7 +3,9 @@ package web;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpClient;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -21,7 +23,9 @@ import java.util.UUID;
 
 
 /**
- * Created by vitas on 02.10.16.
+ * main Handler test class
+ *
+ * @Author Legomin Vitaliy
  */
 @RunWith(VertxUnitRunner.class)
 public class VertxHttpServerVerticleTest {
@@ -32,7 +36,11 @@ public class VertxHttpServerVerticleTest {
     private UUID uuid1, uuid2;
     private ObjectMapper mapper = new ObjectMapper();
 
-
+    /**
+     * initialization
+     *
+     * @param context
+     */
     @Before
     public void setUp(TestContext context) {
         vertx = Vertx.vertx();
@@ -51,8 +59,13 @@ public class VertxHttpServerVerticleTest {
         vertx.close(context.asyncAssertSuccess());
     }
 
+    /**
+     * get entries test
+     *
+     * @param context
+     */
     @Test
-    public void testGetEnytries(TestContext context) {
+    public void testGetEntries(TestContext context) {
         final Async async = context.async();
 
         httpClient.get(8080, "localhost", "/entries",
@@ -63,9 +76,14 @@ public class VertxHttpServerVerticleTest {
                         context.assertTrue(body.toString().contains("title"));
                         async.complete();
                     });
-                }).end("");
+                }).end(" ");
     }
 
+    /**
+     * test get entry by id
+     *
+     * @param context
+     */
     @Test
     public void testGetEntry(TestContext context) {
         final Async async = context.async();
@@ -84,14 +102,18 @@ public class VertxHttpServerVerticleTest {
                 response -> {
                     context.assertTrue(response.statusCode() == 404);
                     response.handler(body -> {
-                        //context.assertTrue(body.toString().contains("404"));
                         async.complete();
                     });
                 }).end("");
     }
 
+    /**
+     * test post new entry
+     *
+     * @param context
+     */
     @Test
-    public void testPostEnytry(TestContext context) {
+    public void testPostEntry(TestContext context) {
         final Async async = context.async();
 
         Map<String, String> enc = new HashMap<>();
@@ -99,14 +121,11 @@ public class VertxHttpServerVerticleTest {
         enc.put("title", "title5");
 
         try {
-            vertx.createHttpClient().post(8080, "localhost", "/entries",
+            httpClient.post(8080, "localhost", "/entries",
                     response -> {
                         context.assertTrue(response.statusCode() == 200);
                         response.handler(body -> {
-                            //context.assertTrue(body.toString().contains("pagingState"));
-                            //context.assertTrue(body.toString().contains("pagingList"));
                             async.complete();
-                            System.out.println();
                         });
                     }).end(mapper.writeValueAsString(enc));
         } catch (JsonProcessingException e) {
@@ -114,6 +133,11 @@ public class VertxHttpServerVerticleTest {
         }
     }
 
+    /**
+     * test put entry
+     *
+     * @param context
+     */
     @Test
     public void testPutEntry(TestContext context) {
         final Async async = context.async();
@@ -127,7 +151,6 @@ public class VertxHttpServerVerticleTest {
                     response -> {
                         context.assertTrue(response.statusCode() == 200);
                         response.handler(body -> {
-                            //context.assertTrue(body.toString().contains("success"));
                             async.complete();
                         });
                     }).end(mapper.writeValueAsString(enc));
@@ -140,7 +163,6 @@ public class VertxHttpServerVerticleTest {
                     response -> {
                         context.assertTrue(response.statusCode() == 404);
                         response.handler(body -> {
-                            //context.assertTrue(body.toString().contains("404"));
                             async.complete();
                         });
                     }).end(mapper.writeValueAsString(enc));
@@ -149,6 +171,11 @@ public class VertxHttpServerVerticleTest {
         }
     }
 
+    /**
+     * test delete entry
+     *
+     * @param context
+     */
     @Test
     public void testDeleteEntry(TestContext context) {
         final Async async = context.async();
@@ -157,7 +184,6 @@ public class VertxHttpServerVerticleTest {
                 response -> {
                     context.assertTrue(response.statusCode() == 200);
                     response.handler(body -> {
-                        //context.assertTrue(body.toString().contains("success"));
                         async.complete();
                     });
                 }).end("");
@@ -166,10 +192,42 @@ public class VertxHttpServerVerticleTest {
                 response -> {
                     context.assertTrue(response.statusCode() == 404);
                     response.handler(body -> {
-                        //context.assertTrue(body.toString().contains("404"));
                         async.complete();
                     });
                 }).end("");
     }
+
+    /**
+     * test socket
+     *
+     * @param context
+     */
+    @Test
+    public void testSocket(TestContext context) {
+        final Async async = context.async();
+
+        Map<String, String> enc = new HashMap<>();
+        enc.put("body", "hello2");
+        enc.put("title", "title2");
+
+        EventBus eb = vertx.eventBus();
+        eb.consumer("/latest/").handler(message ->
+        {
+            JsonObject jsonObject = new JsonObject(message.body().toString());
+            context.assertEquals(jsonObject.getString("body"), "hello2");
+            context.assertEquals(jsonObject.getString("title"), "title2");
+            async.complete();
+        });
+
+        try {
+            httpClient.post(8080, "localhost", "/entries",
+                    response -> {
+                    }).end(mapper.writeValueAsString(enc));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+
+    }
+
 
 }
